@@ -8,13 +8,15 @@ public class InstancedColor : MonoBehaviour
     static int ColorID = Shader.PropertyToID("_Color");
     [SerializeField]
     Color color = Color.white;
+    [SerializeField]
+    bool randomize=true;
     private void Awake()
     {
         OnValidate();
     }
     private void OnValidate()
     {
-        if (color == Color.white)
+        if (color == Color.white&&randomize)
             color = RandomColor();
         if(propertyBlock==null)
             propertyBlock = new MaterialPropertyBlock();
@@ -23,6 +25,7 @@ public class InstancedColor : MonoBehaviour
     }
     private Color RandomColor()
     {
+        
         return new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f), 1f);
     }
 }
