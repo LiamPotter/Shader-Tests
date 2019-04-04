@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a93e50285fadc3841822cd003af7fd72, type: 3}
   m_Name: Impli Pipeline Object
   m_EditorClassIdentifier: 
-  shadowMapSize: 4096
+  shadowMapSize: 1024
   dynamicBatching: 1
   instancing: 1

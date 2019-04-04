@@ -12234,10 +12234,10 @@ Light:
   m_Color: {r: 0.9869646, g: 1, b: 0.07075471, a: 1}
   m_Intensity: 800
   m_Range: 65.804855
-  m_SpotAngle: 75.7
+  m_SpotAngle: 44.4
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 1
+    m_Type: 2
     m_Resolution: 3
     m_CustomResolution: -1
     m_Strength: 1

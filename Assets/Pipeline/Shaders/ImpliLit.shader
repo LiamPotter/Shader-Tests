@@ -16,6 +16,8 @@
 			#pragma multi_compile_instancing
 			#pragma instancing_options assumeuniformscaling
 
+			#pragma multi_compile _ _SHADOWS_SOFT
+
 			#pragma vertex LitPassVertex
 			#pragma fragment LitPassFragment
 

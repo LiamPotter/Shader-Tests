@@ -20,6 +20,8 @@ public class ImpliPipeline : RenderPipeline
 
     const int maxVisibleLights = 16;
 
+    const string shadowsSoftKeyword = "_SHADOWS_SOFT";
+
     #region Static IDs
     static int visibleLightColorsId 
         = Shader.PropertyToID("_VisibleLightColors");
@@ -37,6 +39,10 @@ public class ImpliPipeline : RenderPipeline
         = Shader.PropertyToID("_WorldToShadowMatrix");
     static int shadowBiasId
         = Shader.PropertyToID("_ShadowBias");
+    static int shadowStrengthId
+        = Shader.PropertyToID("_ShadowStrength");
+    static int shadowMapSizeId
+        = Shader.PropertyToID("_ShadowMapSize");
     #endregion
 
     Vector4[] visibleLightColors = new Vector4[maxVisibleLights];
@@ -226,11 +232,10 @@ public class ImpliPipeline : RenderPipeline
 
         shadowBuffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
         shadowBuffer.SetGlobalFloat(shadowBiasId, cull.visibleLights[0].light.shadowBias);
-        context.ExecuteCommandBuffer(shadowBuffer);
-        shadowBuffer.Clear();
+        shadowBuffer.SetGlobalFloat(shadowStrengthId, cull.visibleLights[0].light.shadowStrength);
 
-        var shadowSettings = new DrawShadowsSettings(cull, 0);
-        context.DrawShadows(ref shadowSettings);
+     
+      
 
         if(SystemInfo.usesReversedZBuffer)
         {
@@ -246,8 +251,25 @@ public class ImpliPipeline : RenderPipeline
         Matrix4x4 worldToShadowMatrix = scaleOffset*(projectionMatrix * viewMatrix);
         shadowBuffer.SetGlobalMatrix(worldToShadowMatrixId, worldToShadowMatrix);
         shadowBuffer.SetGlobalTexture(shadowMapId, shadowMap);
+        float invShadowMapSize = 1f / shadowMapSize;
+        shadowBuffer.SetGlobalVector(
+            shadowMapSizeId, new Vector4(
+                invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize
+            )
+        );
+        CoreUtils.SetKeyword(
+       shadowBuffer, shadowsSoftKeyword,
+       cull.visibleLights[0].light.shadows == LightShadows.Soft
+   );
 
         shadowBuffer.EndSample("Render Shadows");
+        context.ExecuteCommandBuffer(shadowBuffer);
+        shadowBuffer.Clear();
+
+        var shadowSettings = new DrawShadowsSettings(cull, 0);
+        context.DrawShadows(ref shadowSettings);
+
+
     }
 
     [Conditional("DEVELOPMENT_BUILD"),Conditional("UNITY_EDITOR")]
