@@ -22,9 +22,15 @@ public class ImpliPipeline : RenderPipeline
 
     const int maxVisibleLights = 16;
 
+    #region Keywords
     const string shadowsSoftKeyword = "_SHADOWS_SOFT";
 
     const string shadowsHardKeyword = "_SHADOWS_HARD";
+
+    const string cascadedShadowsSoftKeyword = "_CASCADED_SHADOWS_SOFT";
+
+    const string cascadedShadowsHardKeyword = "_CASCADED_SHADOWS_HARD";
+    #endregion
 
     #region Static IDs
     static int visibleLightColorsId 
@@ -53,6 +59,12 @@ public class ImpliPipeline : RenderPipeline
         = Shader.PropertyToID("_CascadedShadowMap");
     static int worldToShadowCascadeMatricesId
         = Shader.PropertyToID("_WorldToShadowCascadeMatrices");
+    static int cascadedShadowMapSizeId
+        = Shader.PropertyToID("_CascadedShadowMapSize");
+    static int cascadedShadowStrengthId
+        = Shader.PropertyToID("_CascadedShadowStrength");
+    static int cascadeCullingSpheresId
+        = Shader.PropertyToID("_CascadeCullingSpheres");
     #endregion
 
     Vector4[] visibleLightColors = new Vector4[maxVisibleLights];
@@ -60,9 +72,10 @@ public class ImpliPipeline : RenderPipeline
     Vector4[] visibleLightAttenuations = new Vector4[maxVisibleLights];
     Vector4[] visibleLightSpotDirections = new Vector4[maxVisibleLights];
     Vector4[] shadowData = new Vector4[maxVisibleLights];
+    Vector4[] cascadeCullingSpheres = new Vector4[4]; 
 
     Matrix4x4[] worldToShadowMatrices = new Matrix4x4[maxVisibleLights];
-    Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[4];
+    Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[5];
 
     int shadowMapSize;
     int shadowTileCount;
@@ -76,6 +89,8 @@ public class ImpliPipeline : RenderPipeline
         int shadowCascades, Vector3 shadowCascadeSplit)
     {
         GraphicsSettings.lightsUseLinearIntensity = true;
+        if (SystemInfo.usesReversedZBuffer)
+            worldToShadowCascadeMatrices[4].m33 = 1f;
         if (dynamicBatching)
             drawFlags = DrawRendererFlags.EnableDynamicBatching;
         if (instancing)
@@ -115,6 +130,11 @@ public class ImpliPipeline : RenderPipeline
             ConfigureLights();
             if (mainLightExists)
                 RenderCascadedShadows(context);
+            else
+            {
+                cameraBuffer.DisableShaderKeyword(cascadedShadowsHardKeyword);
+                cameraBuffer.DisableShaderKeyword(cascadedShadowsSoftKeyword);               
+            }
             if (shadowTileCount>0)
                 RenderShadows(context);
             else
@@ -126,6 +146,8 @@ public class ImpliPipeline : RenderPipeline
         else
         {
             cameraBuffer.SetGlobalVector(lightIndicesOffsetAndCountId, Vector4.zero);
+            cameraBuffer.DisableShaderKeyword(cascadedShadowsHardKeyword);
+            cameraBuffer.DisableShaderKeyword(cascadedShadowsSoftKeyword);
             cameraBuffer.DisableShaderKeyword(shadowsHardKeyword);
             cameraBuffer.DisableShaderKeyword(shadowsSoftKeyword);
         }
@@ -251,9 +273,11 @@ public class ImpliPipeline : RenderPipeline
             visibleLightAttenuations[i] = attenuation;
             shadowData[i] = shadow;
         }
-        if (cull.visibleLights.Count > maxVisibleLights)
+        if (mainLightExists||cull.visibleLights.Count > maxVisibleLights)
         {
             int[] lightIndices = cull.GetLightIndexMap();
+            if (mainLightExists)
+                lightIndices[0] = -1;
             for (int i = maxVisibleLights; i < cull.visibleLights.Count; i++)
             {
                 lightIndices[i] = -1;
@@ -414,8 +438,9 @@ public class ImpliPipeline : RenderPipeline
             shadowBuffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
             context.ExecuteCommandBuffer(shadowBuffer);
             shadowBuffer.Clear();
-
-            shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            cascadeCullingSpheres[i] =
+                shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            cascadeCullingSpheres[i].w *= splitData.cullingSphere.w;
             context.DrawShadows(ref shadowSettings);
             CalculateWorldToShadowMatrix(
                 ref viewMatrix, ref projectionMatrix,
@@ -429,12 +454,25 @@ public class ImpliPipeline : RenderPipeline
         shadowBuffer.DisableScissorRect();
         shadowBuffer.SetGlobalTexture(cascadedShadowMapId, cascadedShadowMap);
         shadowBuffer.SetGlobalMatrixArray(
-            worldToShadowCascadeMatricesId, worldToShadowCascadeMatrices
-            );
+            worldToShadowCascadeMatricesId, worldToShadowCascadeMatrices);
+        shadowBuffer.SetGlobalVectorArray(
+            cascadeCullingSpheresId, cascadeCullingSpheres);
+
+        float invShadowMapSize = 1f / shadowMapSize;
+        shadowBuffer.SetGlobalVector(
+            cascadedShadowMapSizeId, new Vector4(
+                invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize));
+        shadowBuffer.SetGlobalFloat(
+            cascadedShadowStrengthId, shadowLight.shadowStrength);
+        bool hard = shadowLight.shadows == LightShadows.Hard;
+       
+        CoreUtils.SetKeyword(shadowBuffer, cascadedShadowsHardKeyword, hard);
+        CoreUtils.SetKeyword(shadowBuffer, cascadedShadowsSoftKeyword, !hard);
         shadowBuffer.EndSample("Render Shadows");
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();
     }
+
     private RenderTexture SetShadowRenderTarget()
     {
         RenderTexture texture = RenderTexture.GetTemporary(
@@ -486,6 +524,7 @@ public class ImpliPipeline : RenderPipeline
             scaleOffset * (projectionMatrix * viewMatrix);
     }
     [Conditional("DEVELOPMENT_BUILD"),Conditional("UNITY_EDITOR")]
+
     private void DrawDefaultPipeline(ScriptableRenderContext context, Camera camera)
     {
         if (errorMaterial == null)
