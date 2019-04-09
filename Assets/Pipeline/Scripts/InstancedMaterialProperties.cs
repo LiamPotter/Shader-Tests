@@ -2,14 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class InstancedColor : MonoBehaviour
+public class InstancedMaterialProperties : MonoBehaviour
 {
     static MaterialPropertyBlock propertyBlock;
     static int ColorID = Shader.PropertyToID("_Color");
+    static int SmoothnessID = Shader.PropertyToID("_Smoothness");
+
     [SerializeField]
     Color color = Color.white;
+
+    [SerializeField,Range(0f,1f)]
+    float smoothness = 0.5f;
+
     [SerializeField]
     bool randomize=true;
+
     private void Awake()
     {
         OnValidate();
@@ -21,6 +28,7 @@ public class InstancedColor : MonoBehaviour
         if(propertyBlock==null)
             propertyBlock = new MaterialPropertyBlock();
         propertyBlock.SetColor(ColorID, color);
+        propertyBlock.SetFloat(SmoothnessID, smoothness);
         GetComponent<MeshRenderer>().SetPropertyBlock(propertyBlock);
     }
     private Color RandomColor()

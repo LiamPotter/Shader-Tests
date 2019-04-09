@@ -7,11 +7,12 @@
 
 		[KeywordEnum(Off, On, Shadows)] _Clipping("Alpha Clipping", Float) = 0
 		_Cutoff("Alpha Cutoff",Range(0,1)) = 0.5
+		_Smootheness("Smoothness", Range(0,1)) = 0.5
 		[Enum(UnityEngine.Rendering.CullMode)]_Cull("Cull", Float) = 2
 		[Enum(UnityEngine.Rendering.BlendMode)]_SrcBlend("Src Blend",Float) = 1
 		[Enum(UnityEngine.Rendering.BlendMode)]_DstBlend("Dst Blend",Float) = 0
 		[Enum(Off,0,On,1)] _ZWrite("Z Write",Float) = 1
-		[Toggle(_RECEIVE_SHADOWS)] _RecieveShadows("Receive Shadows", Float) = 1
+		[Toggle(_RECEIVE_SHADOWS)] _ReceiveShadows("Receive Shadows", Float) = 1
     }
     SubShader
     {
@@ -39,7 +40,7 @@
 			#pragma fragment LitPassFragment
 
 			#include "../ShaderLibrary/ImpliLit.hlsl"
-		   
+
 			ENDHLSL
         }
 		Pass
