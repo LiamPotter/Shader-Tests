@@ -67,4 +67,5 @@
 			ENDHLSL
 		}
     }
+	CustomEditor "ImpliLitShaderGUI"
 }
